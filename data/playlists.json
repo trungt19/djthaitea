@@ -1,0 +1,63 @@
+[
+  {
+    "id": "1",
+    "slug": "dark-baptism-set",
+    "name": "Dark Baptism Set",
+    "description": "A journey from deep grooves into dark, aggressive trap territory",
+    "tracks": [
+      { "trackId": "baptized-in-dance", "transitionNote": "Start with the groove, let it breathe" },
+      { "trackId": "danger-zone", "transitionNote": "Build the tension with synthwave layers" },
+      { "trackId": "baptized-in-the-darkness", "transitionNote": "Drop into the darkness — energy spike" },
+      { "trackId": "baptized-in-synths", "transitionNote": "Peak moment, full cinematic trap" }
+    ],
+    "createdAt": "2026-05-01",
+    "updatedAt": "2026-05-01"
+  },
+  {
+    "id": "2",
+    "slug": "thai-tea-sessions-vol-1",
+    "name": "Thai Tea Sessions Vol. 1",
+    "description": "45-min journey: dark melodic house → groovy tech house (No Mercy peak) → trance w/ angel vocals → D&B switch → cinematic atmospheric comedown.",
+    "tracks": [
+      { "trackId": "after-hours-drift-one", "transitionNote": "Open dark and moody — set the late-night tone, let the melody pull them in" },
+      { "trackId": "baptized-in-dance", "transitionNote": "Bring in the four-on-the-floor, energy starts rising — locked into the groove" },
+      { "trackId": "dose-groovy-two", "transitionNote": "Lock into the groove — deep pocket, keep them moving" },
+      { "trackId": "bassline-riot-one", "transitionNote": "Push the bass harder, build tension toward the peak" },
+      { "trackId": "no-mercy-one", "transitionNote": "THIS IS THE MOMENT — peak energy, dark tech house, full send. Bass face." },
+      { "trackId": "danger-zone", "transitionNote": "Pull back slightly with synthwave textures, catch your breath" },
+      { "trackId": "celestial-rise", "transitionNote": "Shift into trance — synths take over, euphoric uplift" },
+      { "trackId": "angel-frequency-one", "transitionNote": "Angel vocals arrive — emotional peak, hands in the air moment" },
+      { "trackId": "baptized-in-the-break-one", "transitionNote": "BEAT SWITCH — snap into D&B, breakbeats hit hard, crowd goes wild" },
+      { "trackId": "baptized-in-the-darkness", "transitionNote": "Dark trap energy, keep the intensity but shift the rhythm" },
+      { "trackId": "last-light-one", "transitionNote": "Slow it all the way down — cinematic pads, let the room breathe" },
+      { "trackId": "last-signal-two", "transitionNote": "Final signal — atmospheric closer, fade into silence. End of journey." }
+    ],
+    "createdAt": "2026-05-11",
+    "updatedAt": "2026-05-11"
+  },
+  {
+    "id": "3",
+    "slug": "voices-in-the-dark",
+    "name": "Voices in the Dark",
+    "description": "1-hour vocal journey set — all chopped female vocals, stutter effects, and emotional arcs. From whispered intimacy to cathedral-shaking drops to bittersweet fade. Every track tells a story.",
+    "tracks": [
+      { "trackId": "hollow-dark-one", "transitionNote": "Open in emptiness — fragile vocal echoing through darkness, let the space breathe" },
+      { "trackId": "lucid-drift-one", "transitionNote": "Drift into the dream — dreamy vocals float over warm bass, hypnotic pull" },
+      { "trackId": "ethereal-descent-one", "transitionNote": "Vocals start stuttering and glitching — the journey goes deeper, energy building" },
+      { "trackId": "siren-song-one", "transitionNote": "The siren calls — seductive vocal melody takes control, tempo starts pushing" },
+      { "trackId": "skin-sensual-one", "transitionNote": "Get intimate — whispered ASMR vocals over driving bass, the crowd leans in" },
+      { "trackId": "ghost-protocol-one", "transitionNote": "Transmission incoming — haunted vocal fragments break through static, tension builds" },
+      { "trackId": "wired-through-ceiling-one", "transitionNote": "Energy surges — vocal chops lock into the groove, wired and relentless" },
+      { "trackId": "phantom-limb-one", "transitionNote": "Signal from another dimension — melancholic vocal over heavy bass, bittersweet heat" },
+      { "trackId": "halo-on-the-floor-one", "transitionNote": "Angelic vocals meet dark groove — sacred energy on the dancefloor" },
+      { "trackId": "devils-hour-one", "transitionNote": "Flip the switch — dark male vocal drops, aggressive energy, no mercy vibes" },
+      { "trackId": "talk-dirty-bassline-one", "transitionNote": "Peak filth — sultry vocal commanding the bassline, maximum dancefloor pressure" },
+      { "trackId": "cathedral-drop-one", "transitionNote": "THE MOMENT — operatic vocals explode into unholy drops, baptism by bass" },
+      { "trackId": "dissolve-again-one", "transitionNote": "Start dissolving — emotional vocal fragments scatter, coming down from the peak" },
+      { "trackId": "afterimage-one", "transitionNote": "The memory replays — ghostly vocal waves, holding onto the feeling as it fades" },
+      { "trackId": "last-light-one", "transitionNote": "Final breath — cinematic pads wash everything away, silence returns" }
+    ],
+    "createdAt": "2026-05-11",
+    "updatedAt": "2026-05-11"
+  }
+]
