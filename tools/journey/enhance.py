@@ -201,7 +201,7 @@ def impact(seed=4):
 
 
 # ---------------------------------------------------------------- the edit
-def enhance(song, stems_dir, key, drops, end_from, out_dir, vocal_gain_db=2.5, ghost=True):
+def enhance(song, stems_dir, key, drops, end_from, out_dir, vocal_gain_db=2.5, ghost=True, voice=None):
     os.makedirs(out_dir, exist_ok=True)
     mix = load(song)
     st = {k: load(os.path.join(stems_dir, k + '.wav')) for k in ('drums', 'bass', 'other', 'vocals')}
@@ -268,13 +268,28 @@ def enhance(song, stems_dir, key, drops, end_from, out_dir, vocal_gain_db=2.5, g
         def place(sig, at):
             sig = sig + 0.45 * conv(sig, ir_g)[:len(sig)]
             add(out, sig / (np.abs(sig).max() + 1e-9) * lvl * 2.2, at)
-        for d in exact[1:]:                                   # stutter runs into 2:28, 3:35 and 5:35
+        vm, takes = load_voice(voice) if voice else (None, {})
+        for di, d in enumerate(exact):
+            if di == 0:
+                continue
             per = beat_period(drums_m, d - 16, d)
-            pat, at = ghost_pattern(chops, d, per, bars=2, seed=int(d))
+            word = (vm or {}).get('drops', {}).get(str(di + 1))
+            src = [ghost_word(takes[word], key)] if word in takes else chops
+            pat, at = ghost_pattern(src, d, per, bars=2, seed=int(d))
+            if word in takes:
+                log.append(f'your voice: "{word}" stutters into {int(d // 60)}:{d % 60:04.1f}')
             place(pat, at)
             log.append(f'ghost-voice stutter run into {int(d // 60)}:{d % 60:04.1f}')
         per = beat_period(drums_m, exact[2], exact[2] + 20)
-        place(ghost_calls(chops, exact[2], exact[3] - 20, per, every_bars=8), exact[2])
+        mixed = list(chops)
+        for k, name in enumerate((vm or {}).get('calls', [])):
+            if name in takes:
+                mixed.insert(1 + 2 * k, ghost_word(takes[name], key))
+        place(ghost_calls(mixed, exact[2], exact[3] - 20, per, every_bars=8), exact[2])
+        if vm and vm.get('tag') in takes:
+            tag = voice_tag(takes[vm['tag']], key)
+            add(out, tag * 10 ** ((ref - 6 - db(tag[:int(0.9 * SR)])) / 20), 3.0)
+            log.append('your vocal tag "Tokyo Thai" at 0:03, right after the sonic logo bell')
         log.append(f'ghost-voice calls every 8 bars through the tunnel peak ({len(chops)} chops from her vocal)')
         save(os.path.join(out_dir, 'ghost_chops_preview.wav'), np.vstack([np.vstack([c, np.zeros((SR // 4, 2))]) for c in chops]))
 
@@ -320,12 +335,12 @@ def main():
     ap.add_argument('song'); ap.add_argument('--stems'); ap.add_argument('--out')
     ap.add_argument('--key', default='G'); ap.add_argument('--drops', type=float, nargs='+', required=True)
     ap.add_argument('--end-from', type=float); ap.add_argument('--vocal-gain', type=float, default=2.5)
-    ap.add_argument('--no-ghost', action='store_true')
+    ap.add_argument('--no-ghost', action='store_true'); ap.add_argument('--voice', help='voice_map.json of your recorded words')
     a = ap.parse_args()
     slug = re.sub(r'[^a-z0-9]+', '-', os.path.splitext(os.path.basename(a.song))[0].lower()).strip('-')
     wd = os.path.expanduser(f'~/Movies/Journey/{slug}')
     stems = a.stems or os.path.join(wd, 'stems', 'htdemucs', os.path.splitext(os.path.basename(a.song))[0])
-    for line in enhance(a.song, stems, a.key, a.drops, a.end_from, a.out or os.path.join(wd, 'enhanced'), a.vocal_gain, not a.no_ghost):
+    for line in enhance(a.song, stems, a.key, a.drops, a.end_from, a.out or os.path.join(wd, 'enhanced'), a.vocal_gain, not a.no_ghost, a.voice):
         print(line)
 
 
@@ -421,6 +436,40 @@ def ghost_calls(chops, t0, t1, period, every_bars=8, seed=1):
             add(out, g * (0.6 if j < 2 else 0.9), t - t0 + dt)
         t += bar * every_bars; k += 1
     return out
+
+
+
+# ---------------------------------------------------------------- the artist's own voice
+def load_voice(voice_map):
+    import json
+    vm = json.load(open(os.path.expanduser(voice_map)))
+    a = load(os.path.expanduser(vm['file']))
+    takes = {}
+    for k, (t0, t1) in vm['takes'].items():
+        w = a[int(max(0, t0 - 0.03) * SR):int((t1 + 0.08) * SR)].copy()
+        f = int(0.005 * SR); w[:f] *= np.linspace(0, 1, f)[:, None]; w[-f * 6:] *= np.linspace(1, 0, f * 6)[:, None]
+        takes[k] = highpass(w, 90) / (np.abs(w).max() + 1e-9)
+    return vm, takes
+
+
+def ghost_word(w, key):
+    """A spoken word made to sing in key: vocoded through a minor chord (two octaves), a touch of
+    octave-up shimmer and some of the dry voice so it stays intelligible."""
+    vc = 0.6 * vocode(w, key, octave=4) + 0.4 * vocode(w, key, octave=5)
+    up = pitch(w, 12); sh = np.zeros_like(w); sh[:len(up)] = up
+    g = 0.65 * vc + 0.25 * sh + 0.45 * w
+    g = highpass(g, 160)
+    return g / (np.abs(g).max() + 1e-9)
+
+
+def voice_tag(w, key):
+    """The artist's vocal tag: dry voice up front, vocoded double behind, echo and a long tail."""
+    vc = vocode(w, key, octave=4)
+    core = 0.8 * w + 0.45 * vc
+    echo = pingpong(core, 0.33, repeats=5, feedback=0.5) * 0.5
+    verb = conv(core, reverb_ir(3.2, rt60=3.0, bright=8000, seed=11)) * 0.35
+    out = np.zeros((max(len(echo), len(verb)), 2)); out[:len(echo)] += echo; out[:len(core)] += core; out[:len(verb)] += verb
+    return out / (np.abs(out).max() + 1e-9)
 
 
 if __name__ == '__main__':
