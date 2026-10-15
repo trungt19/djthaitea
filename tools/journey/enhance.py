@@ -274,7 +274,23 @@ def enhance(song, stems_dir, key, drops, end_from, out_dir, vocal_gain_db=2.5, g
                 continue
             per = beat_period(drums_m, d - 16, d)
             word = (vm or {}).get('drops', {}).get(str(di + 1))
-            src = [ghost_word(takes[word], key)] if word in takes else chops
+            if word == 'vowels' and vm.get('extra', {}).get('vowels'):
+                vraw = load(os.path.expanduser(vm['extra']['file']))
+                src = []
+                for k, (v0, v1) in enumerate(vm['extra']['vowels']):          # wordless angelic chops from sung vowels
+                    mid = (v0 + v1) / 2
+                    g = highpass(vraw[int((mid - 0.25) * SR):int((mid + 0.25) * SR)], 90)
+                    g = g / (np.abs(g).max() + 1e-9)
+                    a_ = 0.55 * vocode(g, key, octave=5) + 0.35 * vocode(g, key, octave=6)
+                    up = pitch(g, 12); sh = np.zeros_like(g); sh[:len(up)] = up
+                    c = highpass(a_ + 0.3 * sh, 250); f_ = int(0.006 * SR)
+                    c[:f_] *= np.linspace(0, 1, f_)[:, None]; c[-f_ * 4:] *= np.linspace(1, 0, f_ * 4)[:, None]
+                    src.append(c / (np.abs(c).max() + 1e-9))
+                src = src[di % len(src):] + src[:di % len(src)]
+                word = 'your sung vowels (wordless)'
+                takes = dict(takes, **{word: None})
+            else:
+                src = [ghost_word(takes[word], key)] if word in takes else chops
             pat, at = ghost_pattern(src, d, per, bars=2, seed=int(d))
             if word in takes:
                 log.append(f'your voice: "{word}" stutters into {int(d // 60)}:{d % 60:04.1f}')
