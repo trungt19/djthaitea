@@ -159,4 +159,25 @@ def generate(board, only=None, variants=2, stills_only=False, length=121, w=1280
         motion = fill(e.get('motion', ''), board) + ', ' + fill(e['image'], board) + ', ' + e.get('style', board.get('style', ''))
         frames = wan_i2v(pick, motion, neg, random.randint(1, 2**31), f'journey/{sid}_vid', w=w, h=h, length=length)
         frames_to_mp4(frames, out)
-        print(f'{sid}: video ({time.time() - t:.0f}s) -> {out}', flush=True)
+        score = similarity(pick, out)
+        if score < 0.5:                               # broken render (noise): keep it out of the edit
+            bad = os.path.join(base, 'failed'); os.makedirs(bad, exist_ok=True)
+            shutil.move(out, os.path.join(bad, f'{sid}_score{score:.2f}.mp4'))
+            print(f'{sid}: video FAILED the still check (similarity {score:.2f}); moved to failed/', flush=True)
+            continue
+        print(f'{sid}: video ({time.time() - t:.0f}s, similarity {score:.2f}) -> {out}', flush=True)
+
+
+def similarity(still, video):
+    """Correlation between the still and the video's first and middle frames (small greyscale); 1 = same."""
+    import numpy as np
+    def grab(args):
+        raw = subprocess.run(['ffmpeg', '-v', 'error', *args, '-vf', 'scale=64:36', '-frames:v', '1', '-f', 'rawvideo',
+                              '-pix_fmt', 'gray', '-'], capture_output=True).stdout
+        return np.frombuffer(raw, np.uint8).astype(float) if raw else None
+    a = grab(['-i', still]); scores = []
+    for ss in ('0', '1'):
+        b = grab(['-ss', ss, '-i', video])
+        if a is not None and b is not None and len(a) == len(b):
+            scores.append(np.corrcoef(a, b)[0, 1])
+    return float(min(scores)) if scores else 0.0
