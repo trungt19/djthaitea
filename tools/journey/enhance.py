@@ -201,7 +201,7 @@ def impact(seed=4):
 
 
 # ---------------------------------------------------------------- the edit
-def enhance(song, stems_dir, key, drops, end_from, out_dir, vocal_gain_db=2.5):
+def enhance(song, stems_dir, key, drops, end_from, out_dir, vocal_gain_db=2.5, ghost=True):
     os.makedirs(out_dir, exist_ok=True)
     mix = load(song)
     st = {k: load(os.path.join(stems_dir, k + '.wav')) for k in ('drums', 'bass', 'other', 'vocals')}
@@ -260,6 +260,24 @@ def enhance(song, stems_dir, key, drops, end_from, out_dir, vocal_gain_db=2.5):
         out[-int(0.5 * SR):] *= np.linspace(1, 0, int(0.5 * SR))[:, None]
         log.append(f'ending rebuilt from {int(e0 // 60)}:{e0 % 60:04.1f}: drums/bass breathe out, pads, 4 temple bells, long fade')
 
+    # 7. ghost voice: pitched, vocoded chops of her own vocal, stuttering into drops and calling in the peak
+    if ghost:
+        chops = ghost_voice(vox, key, [(70, 108), (245, 262), (275, 292), (305, 326)])
+        ir_g = reverb_ir(3.4, rt60=3.0, bright=9000, seed=7)
+        lvl = 10 ** ((ref - 9) / 20)
+        def place(sig, at):
+            sig = sig + 0.45 * conv(sig, ir_g)[:len(sig)]
+            add(out, sig / (np.abs(sig).max() + 1e-9) * lvl * 2.2, at)
+        for d in exact[1:]:                                   # stutter runs into 2:28, 3:35 and 5:35
+            per = beat_period(drums_m, d - 16, d)
+            pat, at = ghost_pattern(chops, d, per, bars=2, seed=int(d))
+            place(pat, at)
+            log.append(f'ghost-voice stutter run into {int(d // 60)}:{d % 60:04.1f}')
+        per = beat_period(drums_m, exact[2], exact[2] + 20)
+        place(ghost_calls(chops, exact[2], exact[3] - 20, per, every_bars=8), exact[2])
+        log.append(f'ghost-voice calls every 8 bars through the tunnel peak ({len(chops)} chops from her vocal)')
+        save(os.path.join(out_dir, 'ghost_chops_preview.wav'), np.vstack([np.vstack([c, np.zeros((SR // 4, 2))]) for c in chops]))
+
     # 2. sonic logo over the first seconds (keeps the original timing, so videos stay in sync)
     logo = sonic_logo(key)
     save(os.path.join(out_dir, 'sonic_logo.wav'), logo)
@@ -302,12 +320,107 @@ def main():
     ap.add_argument('song'); ap.add_argument('--stems'); ap.add_argument('--out')
     ap.add_argument('--key', default='G'); ap.add_argument('--drops', type=float, nargs='+', required=True)
     ap.add_argument('--end-from', type=float); ap.add_argument('--vocal-gain', type=float, default=2.5)
+    ap.add_argument('--no-ghost', action='store_true')
     a = ap.parse_args()
     slug = re.sub(r'[^a-z0-9]+', '-', os.path.splitext(os.path.basename(a.song))[0].lower()).strip('-')
     wd = os.path.expanduser(f'~/Movies/Journey/{slug}')
     stems = a.stems or os.path.join(wd, 'stems', 'htdemucs', os.path.splitext(os.path.basename(a.song))[0])
-    for line in enhance(a.song, stems, a.key, a.drops, a.end_from, a.out or os.path.join(wd, 'enhanced'), a.vocal_gain):
+    for line in enhance(a.song, stems, a.key, a.drops, a.end_from, a.out or os.path.join(wd, 'enhanced'), a.vocal_gain, not a.no_ghost):
         print(line)
+
+
+
+# ---------------------------------------------------------------- ghost voice chops
+def _grains(vocals_mono, windows, n=6, length=0.42):
+    """Pick sustained, strong vowel grains (steady loudness) from the vocal stem."""
+    h = int(0.02 * SR); L = int(length * SR); cands = []
+    for a, b in windows:
+        seg = vocals_mono[int(a * SR):int(b * SR)]
+        e = np.array([np.sqrt(np.mean(seg[i:i + h] ** 2)) for i in range(0, len(seg) - h, h)])
+        k = L // h
+        for i in range(0, len(e) - k, k // 2):
+            w = e[i:i + k]
+            if w.min() > 0.02:
+                cands.append((w.mean() / (w.std() + 1e-6) * w.mean(), a + i * h / SR))
+    cands.sort(reverse=True); picked = []
+    for score, t in cands:
+        if all(abs(t - p) > 2.0 for p in picked):
+            picked.append(t)
+        if len(picked) == n:
+            break
+    return sorted(picked)
+
+
+def pitch(x, semis):
+    """Resample-based pitch shift (chipmunk formants: the classic ghost-voice colour)."""
+    r = 2 ** (semis / 12); idx = np.arange(0, len(x) - 1, r)
+    return np.stack([np.interp(idx, np.arange(len(x)), x[:, c]) for c in range(2)], 1)
+
+
+def vocode(mod, key, octave=5):
+    """STFT vocoder: the vocal's spectral envelope sung by a minor-chord supersaw."""
+    r = NOTE[key]; n = len(mod)
+    car = pad([12 * octave + r, 12 * octave + r + 3, 12 * octave + r + 7, 12 * octave + r + 10, 12 * (octave + 1) + r + 2],
+              n / SR + 0.1, level=0.5)[:n]
+    win, hop = 2048, 512; w = np.hanning(win); out = np.zeros((n + win, 2))
+    mm = np.pad(mod.mean(1), (0, win))
+    for c in range(2):
+        cc = np.pad(car[:, c], (0, win))
+        for i in range(0, n, hop):
+            M = np.abs(np.fft.rfft(mm[i:i + win] * w)); C = np.fft.rfft(cc[i:i + win] * w)
+            env = np.convolve(M, np.ones(24) / 24, 'same')
+            out[i:i + win, c] += np.fft.irfft(C / (np.abs(C) + 1e-9) * env, win) * w
+    out = out[:n]
+    return out / (np.abs(out).max() + 1e-9)
+
+
+def ghost_voice(vox, key, windows):
+    """Grains -> octave-up + fifth-up, blended with a vocoded copy, short fades; returns list of chops."""
+    m = vox.mean(1); chops = []
+    for t in _grains(m, windows):
+        g = vox[int(t * SR):int((t + 0.42) * SR)]
+        o, f5 = pitch(g, 12), pitch(g, 19)
+        up = o.copy(); up[:len(f5)] += 0.5 * f5
+        vc = vocode(up, key)
+        c = 0.6 * up / (np.abs(up).max() + 1e-9) + 0.5 * vc
+        c = highpass(c, 350)
+        f = int(0.006 * SR); c[:f] *= np.linspace(0, 1, f)[:, None]; c[-f * 4:] *= np.linspace(1, 0, f * 4)[:, None]
+        chops.append(c / (np.abs(c).max() + 1e-9))
+    return chops
+
+
+def ghost_pattern(chops, drop_t, period, bars=2, seed=0):
+    """A stutter run into a drop: 1/8 notes, then 1/16, then 1/32 in the last beat; ends on the downbeat."""
+    rng = np.random.default_rng(seed); hits = []
+    start = drop_t - bars * 4 * period; t = start
+    while t < drop_t - 1e-3:
+        left = drop_t - t
+        step = period / 2 if left > 4 * period else (period / 4 if left > period else period / 8)
+        hits.append((t, step)); t += step
+    out = np.zeros((int((drop_t - start + 2.5) * SR), 2))
+    base = chops[int(rng.integers(len(chops)))]
+    for k, (t, step) in enumerate(hits):
+        c = base if (k // 4) % 2 == 0 else chops[(k // 4) % len(chops)]
+        g = c[:max(int(step * SR * 0.85), 64)].copy()
+        g[-64:] *= np.linspace(1, 0, 64)[:, None]
+        pan = np.array([1 - 0.35 * (k % 2), 0.65 + 0.35 * (k % 2)])
+        add(out, g * pan * (0.55 + 0.45 * (t - start) / (drop_t - start)), t - start)
+    add(out, chops[0] * 1.0, drop_t - start)                       # the full chop lands on the drop
+    return out, start
+
+
+def ghost_calls(chops, t0, t1, period, every_bars=8, seed=1):
+    """Call-and-response ghost phrases inside a long section: a 3-hit stutter every N bars."""
+    rng = np.random.default_rng(seed); out = np.zeros((int((t1 - t0 + 3) * SR), 2))
+    bar = 4 * period; t = t0 + bar * (every_bars - 1) + 2 * period
+    k = 0
+    while t < t1 - bar:
+        c = chops[(k + 1) % len(chops)]
+        for j, dt in enumerate((0, period / 2, period * 0.75)):
+            g = c[:int(period * 0.45 * SR)].copy() if j < 2 else c
+            add(out, g * (0.6 if j < 2 else 0.9), t - t0 + dt)
+        t += bar * every_bars; k += 1
+    return out
 
 
 if __name__ == '__main__':
