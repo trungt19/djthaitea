@@ -287,6 +287,11 @@ def annotate(shots):
 TRIP_LEVEL = {'rain_city': .35, 'expressway': .5, 'bridge_stars': .6, 'neon_downtown': .75,
               'tunnel': .6, 'psy_tunnel': 1.0, 'dawn_bay': .3}
 KALEIDO = {'neon_downtown': .45, 'psy_tunnel': 1.0, 'bridge_stars': .25}
+# Full Trip: psychedelic from the first second, still building to the peak and settling into light at dawn
+FULL_LEVEL = {'rain_city': .85, 'expressway': .9, 'bridge_stars': .85, 'neon_downtown': 1.0,
+              'tunnel': .95, 'psy_tunnel': 1.0, 'dawn_bay': .5}
+FULL_KALEIDO = {'rain_city': .55, 'expressway': .6, 'bridge_stars': .55, 'neon_downtown': .8,
+                'tunnel': .7, 'psy_tunnel': 1.0, 'dawn_bay': .2}
 
 
 class TripFinisher(Finisher):
@@ -303,6 +308,7 @@ class TripFinisher(Finisher):
         self.rad = np.hypot(self.gx - cx, self.gy - cy)
         self.fb = None
         self.level = 0.0
+        self.full = False
 
     def _upsample(self, a):
         return np.asarray(Image.fromarray(a, mode='F').resize((self.w, self.h), Image.BILINEAR))
@@ -316,7 +322,9 @@ class TripFinisher(Finisher):
         kick, bstem, mel = self.fx('kick', i), self.fx('bass', i), self.fx('melody', i)
         voc, snare, hats, mph = self.fx('vocals', i), self.fx('snare', i), self.fx('hats', i), self.fx('melody_phase', i)
         bass = kick
-        target = TRIP_LEVEL.get(shot['scene'], .5)
+        target = (FULL_LEVEL if self.full else TRIP_LEVEL).get(shot['scene'], .5)
+        if self.full and self.fb is None and self.level == 0.0:
+            self.level = target                              # full trip: no fade-in from normal
         self.level += (target - self.level) * 0.03          # glide between sections
         L = self.level
         F = frame.astype(np.float32)
@@ -329,7 +337,7 @@ class TripFinisher(Finisher):
         my = (self.gy - self.h / 2) * breath + self.h / 2 + self._upsample(dy)
         F = self._gather(F, mx, my)
         # 2. kaleidoscope
-        k = KALEIDO.get(shot['scene'], 0) * L
+        k = (FULL_KALEIDO if self.full else KALEIDO).get(shot['scene'], 0) * L
         if k > 0.05:
             seg = 2 * math.pi / 8
             a = np.abs(((self.ang + mph * 0.35) % seg) - seg / 2)   # the melody turns the kaleidoscope

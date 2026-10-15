@@ -135,6 +135,8 @@ def main():
     ap.add_argument('--no-voice', action='store_true', help="don't add your recorded choir")
     ap.add_argument('--drops', type=float, nargs='+', help='override the detected drop times (seconds)')
     ap.add_argument('--skip-video', action='store_true'); ap.add_argument('--force', action='store_true')
+    ap.add_argument('--look', choices=['trip', 'fulltrip'], default='fulltrip',
+                    help='trip = real Tokyo that turns psychedelic; fulltrip = psychedelic from the first second')
     a = ap.parse_args()
     song = os.path.abspath(os.path.expanduser(a.song)); name = os.path.splitext(os.path.basename(song))[0]
     title = a.title or name; sl = slug(song)
@@ -215,9 +217,11 @@ def main():
         print('\nDone (audio only):', rel); return
 
     step('6. Psychedelic visualizer')
-    wide = os.path.join(wd, f'{sl}_trip_wide.mp4')
+    clips = os.path.join(OUT_ROOT, 'clips_fulltrip' if a.look == 'fulltrip' else 'clips')
+    wide = os.path.join(wd, f'{sl}_{a.look}_wide.mp4')
     if not os.path.exists(wide) or a.force:
-        run([sys.executable, os.path.join(HERE, 'journey.py'), 'footage', song, '--story', story_f, '--style', 'trip', '--replan'])
+        run([sys.executable, os.path.join(HERE, 'journey.py'), 'footage', song, '--story', story_f, '--style', a.look,
+             '--clips', clips, '--replan'])
     vis = os.path.join(rel, f'{a.artist} - {title} (Psychedelic Visualizer) 4K.mp4')
     run(['ffmpeg', '-v', 'error', '-y', '-i', wide, '-i', mst, '-map', '0:v', '-map', '1:a',
          '-vf', 'scale=3840:2160:flags=lanczos', '-c:v', 'hevc_videotoolbox', '-b:v', '45M', '-tag:v', 'hvc1',
@@ -227,8 +231,8 @@ def main():
     for i, d in enumerate(P['drops'][:3], 1):
         s0 = max(0, d - 12); s1 = min(P['duration'], d + 18)
         tmp = os.path.join(wd, f'short_{i}.mp4')
-        run([sys.executable, os.path.join(HERE, 'journey.py'), 'footage', song, '--story', story_f, '--style', 'trip',
-             '--vertical', '--start', f'{s0:.2f}', '--end', f'{s1:.2f}', '--out', tmp])
+        run([sys.executable, os.path.join(HERE, 'journey.py'), 'footage', song, '--story', story_f, '--style', a.look,
+             '--clips', clips, '--vertical', '--start', f'{s0:.2f}', '--end', f'{s1:.2f}', '--out', tmp])
         run(['ffmpeg', '-v', 'error', '-y', '-i', tmp, '-ss', f'{s0:.3f}', '-t', f'{s1 - s0:.3f}', '-i', mst,
              '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-af', 'volume=-1.3dB,afade=t=in:d=0.5,afade=t=out:st=' + f'{s1 - s0 - 1.5:.2f}' + ':d=1.5',
              '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart',
@@ -296,7 +300,8 @@ def ImageFont_len(path, size, text):
 
 
 def write_description(dst, title, subtitle, artist, story, wd):
-    plan = json.load(open(os.path.join(wd, 'footage_plan.json')))
+    pf = os.path.join(wd, 'fulltrip_plan.json')
+    plan = json.load(open(pf if os.path.exists(pf) else os.path.join(wd, 'footage_plan.json')))
     credits = sorted({re.search(r'_(\d+)\.mp4$', os.path.basename(os.path.realpath(s['clip']))).group(1)
                       for s in plan if re.search(r'_(\d+)\.mp4$', os.path.basename(os.path.realpath(s['clip'])))})
     chap = [f'0:00 {story["chapters"][0]["en"]} · {story["chapters"][0]["jp"]}'] if story.get('chapters') else ['0:00 Intro']

@@ -192,7 +192,8 @@ def cmd_fchunk(a):
         logo = footage.Logo(a.w, a.h, text=lg.get('text', 'TOKYO THAI'), sub=lg.get('sub', '東京タイ'),
                             image=lg.get('image'))
         drive.logo = trip.logo = logo
-    fin = lambda fr, fi, shot, _: (trip if (a.style == 'trip' or shot.get('fx') == 'trip') else drive)(fr, fi, shot, 0)
+    trip.full = a.style == 'fulltrip'
+    fin = lambda fr, fi, shot, _: (trip if (a.style in ('trip', 'fulltrip') or shot.get('fx') == 'trip') else drive)(fr, fi, shot, 0)
     p = subprocess.Popen(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24',
                           '-s', f'{a.w}x{a.h}', '-r', str(engine.FPS), '-i', '-', '-c:v', 'libx264', '-preset', 'medium',
                           '-crf', str(a.crf), '-pix_fmt', 'yuv420p', a.out], stdin=subprocess.PIPE)
@@ -228,7 +229,7 @@ def cmd_footage(a):
     audio = load_audio(a.song)
     dur = len(audio) / engine.SR
     wd = workdir(a.song)
-    plan_file = os.path.join(wd, ('board_' if a.board else 'footage_') + 'plan.json')
+    plan_file = os.path.join(wd, ('board_' if a.board else ('fulltrip_' if a.style == 'fulltrip' else 'footage_')) + 'plan.json')
     if a.replan or a.board or not os.path.exists(plan_file):
         lib = footage.scan_clips(a.clips, wide=not a.vertical)
         print('Clips: ' + ', '.join(f'{k} {len(v)}' for k, v in lib.items() if v))
@@ -303,7 +304,7 @@ def main():
     p.add_argument('--workers', type=int, default=max(1, (os.cpu_count() or 4) - 2))
     p.add_argument('--crf', type=int, default=19)
     p = sub.add_parser('footage'); p.add_argument('song'); p.add_argument('--story')
-    p.add_argument('--style', choices=['drive', 'trip'], default='drive'); p.add_argument('--clips', default=CLIPS_DIR)
+    p.add_argument('--style', choices=['drive', 'trip', 'fulltrip'], default='drive'); p.add_argument('--clips', default=CLIPS_DIR)
     p.add_argument('--vertical', action='store_true'); p.add_argument('--start', type=float)
     p.add_argument('--end', type=float); p.add_argument('--out'); p.add_argument('--replan', action='store_true')
     p.add_argument('--seed', type=int, default=7); p.add_argument('--crf', type=int, default=19)
