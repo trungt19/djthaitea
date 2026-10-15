@@ -204,5 +204,45 @@
   "logo": {
     "text": "TOKYO THAI",
     "sub": "東京タイ"
-  }
+  },
+  "chapters": [
+    {
+      "at": 13,
+      "time": "02:00",
+      "jp": "雨の東京",
+      "en": "Rain over Tokyo"
+    },
+    {
+      "at": 61,
+      "time": "02:30",
+      "jp": "首都高",
+      "en": "Shuto Expressway"
+    },
+    {
+      "at": 118,
+      "time": "03:00",
+      "jp": "隅田川",
+      "en": "Sumida River"
+    },
+    {
+      "at": 147.5,
+      "time": "03:30",
+      "jp": "渋谷",
+      "en": "Shibuya"
+    },
+    {
+      "at": 211,
+      "time": "04:00",
+      "jp": "トンネル",
+      "en": "The Tunnel"
+    },
+    {
+      "at": 336,
+      "time": "05:30",
+      "jp": "富士山",
+      "en": "Mount Fuji"
+    }
+  ],
+  "warning": true,
+  "character_ref": "~/Movies/Journey/storyboards/last-light/character_ref.png"
 }

@@ -182,6 +182,11 @@ def cmd_fchunk(a):
     story = json.load(open(a.story))
     drive = footage.Finisher(a.w, a.h, story, dur, bass, en, engine.FPS)
     trip = footage.TripFinisher(a.w, a.h, story, dur, bass, en, engine.FPS)
+    try:                                   # per-instrument features (Demucs stems), if available
+        import stems
+        drive.feat = trip.feat = stems.features(a.song, workdir(a.song), n, engine.FPS)
+    except SystemExit as e:
+        print(f'(no stems: {e}; using the mix)', file=sys.stderr)
     lg = story.get('logo', {})
     if lg is not False:
         logo = footage.Logo(a.w, a.h, text=lg.get('text', 'TOKYO THAI'), sub=lg.get('sub', '東京タイ'),

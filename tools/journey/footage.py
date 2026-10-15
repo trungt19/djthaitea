@@ -107,6 +107,21 @@ def plan(story, lib, audio, duration, seed=7):
     shots = []
     last_car = [-10]
 
+    playhead = {}      # where each clip left off, so a returning clip continues instead of jumping
+    last_seen = {}     # shot index where each clip was last used
+
+    def take(f, du, length):
+        """Next in-point for clip f: continue from its playhead; restart at a fresh spot if it runs out."""
+        rate = 1.0 if du >= length else max(0.5, du / length)
+        span = length * rate
+        cin = playhead.get(f)
+        if cin is None or cin + span > du - 0.1:
+            cin = rng.uniform(0, max(0.0, min(du - span - 0.1, du * 0.3)))
+        playhead[f] = cin + span + 0.25
+        used[f] = used.get(f, 0) + 1
+        last_seen[f] = len(shots)
+        return f, cin, rate
+
     def pick(scene, length):
         order = [scene] + FALLBACK.get(scene, []) + [k for k in lib if k != 'car']
         for name in order:
@@ -115,14 +130,11 @@ def plan(story, lib, audio, duration, seed=7):
                 break
         else:
             return None
-        # least-used clip first, random start that avoids the last used spot
-        pool.sort(key=lambda c: (used.get(c[0], 0), rng.random()))
+        # avoid the clip we just showed (and anything seen in the last few cuts), then least-used
+        recent = lambda f: len(shots) - last_seen.get(f, -99) <= min(4, len(pool) - 1)
+        pool.sort(key=lambda c: (recent(c[0]), used.get(c[0], 0), rng.random()))
         f, du = pool[0]
-        rate = 1.0 if du >= length * 1.0 else max(0.5, du / length)
-        span = length * rate
-        cin = rng.uniform(0, max(0.0, du - span - 0.1))
-        used[f] = used.get(f, 0) + 1
-        return f, cin, rate
+        return take(f, du, length)
 
     for sec, end in zip(secs, ends):
         scene = sec['scene']; t = float(sec['start'])
@@ -143,10 +155,7 @@ def plan(story, lib, audio, duration, seed=7):
                 cars = sorted(cars_left, key=lambda c: (used.get(c[0], 0), rng.random()))
                 last_car[0] = len(shots)
                 f, du = cars[0]
-                rate = 1.0 if du >= (t1 - t) else max(0.5, du / (t1 - t))
-                cin = rng.uniform(0, max(0.0, du - (t1 - t) * rate - 0.1))
-                used[f] = used.get(f, 0) + 1
-                choice = (f, cin, rate)
+                choice = take(f, du, t1 - t)
             if not choice:
                 choice = pick(scene, t1 - t)
             if not choice:
@@ -210,6 +219,16 @@ class Finisher:
         self.f_title = ImageFont.truetype(ui, 58 if w >= h else 34, index=5)
         self.f_jp = ImageFont.truetype(jp, 34, index=0)
         self.echo = None
+        self.feat = None   # per-instrument features from stems.features(); falls back to the mix's low end
+
+    def fx(self, name, i):
+        if self.feat is not None and name in self.feat:
+            a = self.feat[name]; return float(a[min(i, len(a) - 1)])
+        if name in ('kick', 'bass'):
+            return float(self.bass[min(i, len(self.bass) - 1)])
+        if name == 'melody_phase':
+            return i / self.fps * 0.6
+        return 0.0
 
     def __call__(self, frame, i, shot, prev_scene_blend):
         t = i / self.fps; bass = float(self.bass[min(i, len(self.bass) - 1)])
@@ -249,7 +268,9 @@ class Finisher:
         s = np.asarray(small, np.float32)
         br = Image.fromarray(np.clip((s - 165) * 1.8, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(6))
         bloom = np.asarray(br.resize((self.w, self.h), Image.BILINEAR), np.float32)
-        F += bloom * (0.35 + 0.55 * bass)
+        kick, voc, snare, hats = self.fx('kick', i), self.fx('vocals', i), self.fx('snare', i), self.fx('hats', i)
+        F += bloom * (0.35 + 0.5 * kick + 0.45 * voc + 0.25 * hats)
+        F = (F - 110) * (1 + 0.07 * snare) + 110              # snare: contrast punch
         return self._finish_only(F, i, shot)
 
 
@@ -291,14 +312,17 @@ class TripFinisher(Finisher):
         return F[yi, xi]
 
     def __call__(self, frame, i, shot, prev_scene_blend):
-        t = i / self.fps; bass = float(self.bass[min(i, len(self.bass) - 1)])
+        t = i / self.fps
+        kick, bstem, mel = self.fx('kick', i), self.fx('bass', i), self.fx('melody', i)
+        voc, snare, hats, mph = self.fx('vocals', i), self.fx('snare', i), self.fx('hats', i), self.fx('melody_phase', i)
+        bass = kick
         target = TRIP_LEVEL.get(shot['scene'], .5)
         self.level += (target - self.level) * 0.03          # glide between sections
         L = self.level
         F = frame.astype(np.float32)
         # 1. breathing / melting warp (computed coarse, then upsampled)
-        amp = (6 + 22 * L) * (0.6 + 0.8 * bass)
-        dx = (np.sin(self.sy * 9 + t * 0.9) + 0.6 * np.sin((self.sx + self.sy) * 13 - t * 1.4)) * amp
+        amp = (6 + 22 * L) * (0.45 + 0.7 * bstem + 0.35 * kick)     # the bassline bends the picture
+        dx = (np.sin(self.sy * 9 + mph * 1.2) + 0.6 * np.sin((self.sx + self.sy) * 13 - t * 1.4)) * amp
         dy = (np.cos(self.sx * 7 - t * 0.7) + 0.6 * np.sin((self.sx - self.sy) * 11 + t * 1.1)) * amp * 0.8
         breath = 1 - 0.035 * L * (0.5 + bass)               # whole image breathes in on kicks
         mx = (self.gx - self.w / 2) * breath + self.w / 2 + self._upsample(dx)
@@ -308,14 +332,14 @@ class TripFinisher(Finisher):
         k = KALEIDO.get(shot['scene'], 0) * L
         if k > 0.05:
             seg = 2 * math.pi / 8
-            a = np.abs(((self.ang + t * 0.12) % seg) - seg / 2)
+            a = np.abs(((self.ang + mph * 0.35) % seg) - seg / 2)   # the melody turns the kaleidoscope
             kx = self.w / 2 + self.rad * np.cos(a); ky = self.h / 2 + self.rad * np.sin(a)
             kal = self._gather(F, kx, ky)
             F = F * (1 - k) + kal * k
         # 3. colour waves: hue drifts in bands across the frame
         hue_amt = min(1.0, max(0.0, (L - 0.32) / 0.6))     # calm sections keep natural colour
         if hue_amt > 0.01:
-            F = _hue_rotate(F, math.sin(t * 0.21) * math.pi * hue_amt + bass * 0.5 * hue_amt)
+            F = _hue_rotate(F, math.sin(mph * 0.5) * math.pi * hue_amt + (0.3 * kick + 0.4 * mel) * hue_amt)
         lum = F.mean(axis=2, keepdims=True)
         F = lum + (F - lum) * (1.15 + 0.45 * L)
         # 4. feedback trails: previous output zoomed + rotated, kept where brighter
@@ -331,7 +355,12 @@ class TripFinisher(Finisher):
         small = Image.fromarray(np.clip(F, 0, 255).astype(np.uint8)).resize((self.w // 4, self.h // 4), Image.BOX)
         s = np.asarray(small, np.float32)
         br = Image.fromarray(np.clip((s - 150) * 1.8, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(7))
-        F = F + np.asarray(br.resize((self.w, self.h), Image.BILINEAR), np.float32) * (0.45 + 0.7 * bass)
+        F = F + np.asarray(br.resize((self.w, self.h), Image.BILINEAR), np.float32) * (0.4 + 0.55 * kick + 0.6 * voc)
+        F = (F - 110) * (1 + 0.1 * snare * L) + 110               # snare: contrast punch
+        sh = int(5 * hats * L)                                       # hats: chromatic sparkle
+        if sh:
+            F[:, sh:, 0] = F[:, :-sh, 0].copy(); F[:, :-sh, 2] = F[:, sh:, 2].copy()
+            F += np.clip(F - 200, 0, None) * 0.6 * hats
         return Finisher._finish_only(self, F, i, shot)
 
 
@@ -339,7 +368,7 @@ def _finish_only(self, F, i, shot):
     """Transitions, titles, vignette, grain and fades on an already-processed float frame."""
     t = i / self.fps
     if getattr(self, 'logo', None) is not None:
-        F = self.logo.apply(np.array(F, np.float32), t, float(self.bass[min(i, len(self.bass) - 1)]), shot, self.dur)
+        F = self.logo.apply(np.array(F, np.float32), t, min(1.0, self.fx('kick', i) + 0.5 * self.fx('vocals', i)), shot, self.dur)
     if shot['section_start']:
         k = (t - shot['t0']) * self.fps
         if shot['scene'] in ('neon_downtown', 'psy_tunnel', 'dawn_bay') and k < 10:
@@ -347,6 +376,7 @@ def _finish_only(self, F, i, shot):
         elif k < 12:
             F = F * (0.25 + 0.75 * (k / 12))
     img = Image.fromarray(np.clip(F, 0, 255).astype(np.uint8)).convert('RGBA')
+    self._chapters_and_warning(img, t)
     title, sub = self.story.get('title', ''), self.story.get('subtitle', '')
     if title:
         for a, b in ((2.5, 11.0), (self.dur - 16.0, self.dur - 3.5)):
@@ -361,7 +391,7 @@ def _finish_only(self, F, i, shot):
                        font=self.f_title, fill=(255, 255, 255, al), anchor='mm')
                 img.alpha_composite(ov)
     F = np.asarray(img.convert('RGB'), np.float32) * self.vig + self.grain[i % len(self.grain)]
-    F *= min(1, t / 2.0, max(0, (self.dur - t) / 3.5))
+    F *= min(1, max(0.35 if self.story.get('warning') else 0.0, t / 2.0), max(0, (self.dur - t) / 3.5))
     return np.clip(F, 0, 255).astype(np.uint8)
 
 
@@ -474,3 +504,37 @@ def plan_storyboard(board, lib, audio, duration, seed=7):
         else:
             out += [dict(s, fx=sec['fx'], shot_id=sec.get('shot_id'), drop=sec['drop'] and s['section_start']) for s in mine]
     return annotate(out)
+
+
+def _chapters_and_warning(self, img, t):
+    """Lower-left chapter cards (story 'chapters': [{at, time, jp, en}]) and an optional opening
+    photosensitivity warning (story 'warning': true)."""
+    if not hasattr(self, 'f_ch'):
+        ui = '/System/Library/Fonts/Avenir Next.ttc'; jp = '/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc'
+        sc = 1.0 if self.w >= self.h else 0.8
+        self.f_ch = ImageFont.truetype(ui, int(26 * sc), index=5)
+        self.f_ch_jp = ImageFont.truetype(jp, int(40 * sc))
+        self.f_warn = ImageFont.truetype(ui, int(22 * sc), index=5)
+    ov = None
+    for ch in self.story.get('chapters', []):
+        k = t - ch['at']
+        if 0 <= k <= 5.0:
+            a = min(1, k / 0.8, (5.0 - k) / 1.0)
+            al = int(255 * a * a * (3 - 2 * a))
+            ov = ov or Image.new('RGBA', img.size, (0, 0, 0, 0)); d = ImageDraw.Draw(ov)
+            x = int(self.w * 0.05); y = int(self.h * (0.80 if self.w >= self.h else 0.70))
+            slide = int((1 - a) * 18)
+            d.line([(x, y - 34), (x + 46, y - 34)], fill=(255, 140, 220, al), width=2)
+            d.text((x + slide, y - 26), ch.get('time', ''), font=self.f_ch, fill=(255, 255, 255, int(al * .75)))
+            d.text((x + slide, y + 6), ch['jp'], font=self.f_ch_jp, fill=(255, 255, 255, al))
+            d.text((x + slide, y + 58), '  '.join(ch['en'].upper()), font=self.f_ch, fill=(255, 255, 255, int(al * .8)))
+    if self.story.get('warning') and t < 3.2:
+        a = min(1, t / 0.4, (3.2 - t) / 0.6)
+        ov = ov or Image.new('RGBA', img.size, (0, 0, 0, 0)); d = ImageDraw.Draw(ov)
+        d.text((self.w / 2, self.h * 0.9), 'PHOTOSENSITIVITY WARNING  ·  FLASHING LIGHTS AND PSYCHEDELIC IMAGERY',
+               font=self.f_warn, fill=(255, 255, 255, int(200 * a)), anchor='mm')
+    if ov is not None:
+        img.alpha_composite(ov)
+
+
+Finisher._chapters_and_warning = _chapters_and_warning

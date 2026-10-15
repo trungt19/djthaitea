@@ -66,7 +66,7 @@ def upload(path):
     return name
 
 
-def sdxl_still(prompt, negative, seed, prefix, w=1344, h=768, steps=32):
+def sdxl_still(prompt, negative, seed, prefix, w=1344, h=768, steps=32, ref=None, ref_weight=0.7):
     wf = {
         '1': {'class_type': 'CheckpointLoaderSimple', 'inputs': {'ckpt_name': 'sd_xl_base_1.0.safetensors'}},
         '2': {'class_type': 'CLIPTextEncode', 'inputs': {'text': prompt, 'clip': ['1', 1]}},
@@ -78,6 +78,13 @@ def sdxl_still(prompt, negative, seed, prefix, w=1344, h=768, steps=32):
         '6': {'class_type': 'VAEDecode', 'inputs': {'samples': ['5', 0], 'vae': ['1', 2]}},
         '7': {'class_type': 'SaveImage', 'inputs': {'images': ['6', 0], 'filename_prefix': prefix}},
     }
+    if ref:   # keep the character's face: IP-Adapter Plus Face (SDXL) with a reference still
+        wf['20'] = {'class_type': 'LoadImage', 'inputs': {'image': upload(ref)}}
+        wf['21'] = {'class_type': 'IPAdapterUnifiedLoader', 'inputs': {'model': ['1', 0], 'preset': 'PLUS FACE (portraits)'}}
+        wf['22'] = {'class_type': 'IPAdapter', 'inputs': {'model': ['21', 0], 'ipadapter': ['21', 1], 'image': ['20', 0],
+                                                          'weight': ref_weight, 'start_at': 0.0, 'end_at': 1.0,
+                                                          'weight_type': 'standard'}}
+        wf['5']['inputs']['model'] = ['22', 0]
     return run(wf)[0]
 
 
@@ -124,6 +131,9 @@ def generate(board, only=None, variants=2, stills_only=False, length=121, w=1280
     stills_dir = os.path.join(base, 'stills'); shots_dir = os.path.expanduser(board['shots_dir'])
     os.makedirs(stills_dir, exist_ok=True); os.makedirs(shots_dir, exist_ok=True)
     neg = board.get('negative', '')
+    ref = os.path.expanduser(board['character_ref']) if board.get('character_ref') else None
+    if ref and not os.path.exists(ref):
+        ref = None
     for e in board['timeline']:
         sid = e.get('shot')
         if not sid or (only and sid not in only):
@@ -138,7 +148,8 @@ def generate(board, only=None, variants=2, stills_only=False, length=121, w=1280
             seeds = [random.randint(1, 2**31) for _ in range(variants)]
             for v, sd in enumerate(seeds, 1):
                 t = time.time()
-                f = sdxl_still(img_prompt, neg, sd, f'journey/{sid}_v{v}')
+                use_ref = ref if '{character}' in e['image'] and os.path.basename(ref or '') != sid + '.png' else None
+                f = sdxl_still(img_prompt, neg, sd, f'journey/{sid}_v{v}', ref=use_ref)
                 dst = os.path.join(stills_dir, f'{sid}_v{v}.png'); shutil.move(f, dst)
                 print(f'{sid}: still v{v} ({time.time() - t:.0f}s) -> {dst}', flush=True)
             shutil.copy(os.path.join(stills_dir, f'{sid}_v1.png'), pick)

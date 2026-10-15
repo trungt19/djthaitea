@@ -3,12 +3,72 @@
   "subtitle": "天空の旅",
   "blend": 6.0,
   "sections": [
-    {"start": 0,   "scene": "rain_city"},
-    {"start": 60,  "scene": "expressway"},
-    {"start": 117, "scene": "bridge_stars"},
-    {"start": 146, "scene": "neon_downtown"},
-    {"start": 210, "scene": "tunnel"},
-    {"start": 216, "scene": "psy_tunnel"},
-    {"start": 334, "scene": "dawn_bay"}
+    {
+      "start": 0,
+      "scene": "rain_city"
+    },
+    {
+      "start": 60,
+      "scene": "expressway"
+    },
+    {
+      "start": 117,
+      "scene": "bridge_stars"
+    },
+    {
+      "start": 146,
+      "scene": "neon_downtown"
+    },
+    {
+      "start": 210,
+      "scene": "tunnel"
+    },
+    {
+      "start": 216,
+      "scene": "psy_tunnel"
+    },
+    {
+      "start": 334,
+      "scene": "dawn_bay"
+    }
+  ],
+  "warning": true,
+  "chapters": [
+    {
+      "at": 13,
+      "time": "02:00",
+      "jp": "雨の東京",
+      "en": "Rain over Tokyo"
+    },
+    {
+      "at": 61,
+      "time": "02:30",
+      "jp": "首都高",
+      "en": "Shuto Expressway"
+    },
+    {
+      "at": 118,
+      "time": "03:00",
+      "jp": "隅田川",
+      "en": "Sumida River"
+    },
+    {
+      "at": 147.5,
+      "time": "03:30",
+      "jp": "渋谷",
+      "en": "Shibuya"
+    },
+    {
+      "at": 211,
+      "time": "04:00",
+      "jp": "トンネル",
+      "en": "The Tunnel"
+    },
+    {
+      "at": 336,
+      "time": "05:30",
+      "jp": "富士山",
+      "en": "Mount Fuji"
+    }
   ]
 }
