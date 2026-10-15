@@ -281,9 +281,14 @@ def enhance(song, stems_dir, key, drops, end_from, out_dir, vocal_gain_db=2.5, g
                     mid = (v0 + v1) / 2
                     g = highpass(vraw[int((mid - 0.25) * SR):int((mid + 0.25) * SR)], 90)
                     g = g / (np.abs(g).max() + 1e-9)
-                    a_ = 0.55 * vocode(g, key, octave=5) + 0.35 * vocode(g, key, octave=6)
-                    up = pitch(g, 12); sh = np.zeros_like(g); sh[:len(up)] = up
-                    c = highpass(a_ + 0.3 * sh, 250); f_ = int(0.006 * SR)
+                    f0 = f0_of(g.mean(1)) or 130.0
+                    midi = 69 + 12 * np.log2(f0 / 440)
+                    tones = [36 + NOTE[key] + 7 + o for o in (0, 3, 7, 12, 15, 19)]          # chord tones near the voice
+                    tgt = min(tones, key=lambda m: abs(m - midi))
+                    nat = pitch(g, tgt - midi); tuned = np.zeros_like(g); tuned[:len(nat)] = nat
+                    fifth = pitch(g, tgt - midi + 7); h5 = np.zeros_like(g); h5[:len(fifth)] = fifth
+                    a_ = 0.25 * vocode(g, key, octave=5)
+                    c = highpass(0.8 * tuned + 0.35 * h5 + a_, 110); f_ = int(0.006 * SR)
                     c[:f_] *= np.linspace(0, 1, f_)[:, None]; c[-f_ * 4:] *= np.linspace(1, 0, f_ * 4)[:, None]
                     src.append(c / (np.abs(c).max() + 1e-9))
                 src = src[di % len(src):] + src[:di % len(src)]
@@ -292,6 +297,8 @@ def enhance(song, stems_dir, key, drops, end_from, out_dir, vocal_gain_db=2.5, g
             else:
                 src = [ghost_word(takes[word], key)] if word in takes else chops
             pat, at = ghost_pattern(src, d, per, bars=2, seed=int(d))
+            if word == 'your sung vowels (wordless)':
+                pat = pat * 10 ** (4 / 20)
             if word in takes:
                 log.append(f'your voice: "{word}" stutters into {int(d // 60)}:{d % 60:04.1f}')
             place(pat, at)
@@ -310,7 +317,7 @@ def enhance(song, stems_dir, key, drops, end_from, out_dir, vocal_gain_db=2.5, g
                 vowels = [highpass(cut(ab), 70) for ab in extra['vowels']]
                 for a0, a1 in extra.get('choir_at', []):
                     cp = choir_pad(vowels, key, a1 - a0, seed=int(a0))
-                    add(out, cp * 10 ** ((ref - 13 - db(cp[int(2.5 * SR):-int(3.5 * SR)])) / 20), a0)
+                    add(out, cp * 10 ** ((ref - extra.get('choir_db_below', 7) - db(cp[int(2.5 * SR):-int(3.5 * SR)])) / 20), a0)
                     log.append(f'your choir under {int(a0 // 60)}:{a0 % 60:04.1f}-{int(a1 // 60)}:{a1 % 60:04.1f}')
             if raw is not None and extra.get('whisper'):
                 wv = cut(extra['whisper']); wv = highpass(wv, 150) / (np.abs(wv).max() + 1e-9)
@@ -551,8 +558,8 @@ def choir_pad(vowels, key, length, seed=0):
                 pv = pitch(v, shift)
                 voices += stretch(pv, length, seed=seed + i * 7 + int(tgt)) * 0.5
     hi = vocode(stretch(vowels[0], length, seed=seed + 99), key, octave=5)
-    pad_ = 0.7 * voices / (np.abs(voices).max() + 1e-9) + 0.45 * hi
-    pad_ = highpass(lowpass(pad_, 7000), 120)
+    pad_ = 0.9 * voices / (np.abs(voices).max() + 1e-9) + 0.2 * hi
+    pad_ = highpass(lowpass(pad_, 9000), 80)
     t = np.arange(len(pad_)) / SR
     env = np.minimum(1, t / 2.5) * np.minimum(1, (length - t) / 3.5)
     pad_ = pad_ * env[:, None]
