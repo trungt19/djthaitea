@@ -1,0 +1,208 @@
+{
+  "title": "Celestial Journey",
+  "subtitle": "天空の旅",
+  "song": "~/Downloads/Celestial Journey.mp3",
+  "shots_dir": "~/Movies/Journey/storyboards/last-light/shots",
+  "logline": "A burnt-out night-shift worker in neon cyberpunk Tokyo finally keeps an old promise: to see the sunrise at Mount Fuji. Night is stylized; dawn is real.",
+  "style": "cinematic cyberpunk Tokyo at night, neon magenta and cyan, wet reflective streets, light rain, volumetric haze, holographic signs in Japanese, anamorphic lens flares, shallow depth of field, 35mm film grain, moody, highly detailed",
+  "negative": "text, watermark, logo, extra fingers, deformed hands, distorted face, warped wheels, cartoon, lowres, blurry, oversaturated, duplicate person",
+  "character": "a young Japanese woman in her mid twenties, short black bob haircut with blunt bangs, small silver hoop earring, oversized black techwear jacket with reflective trim, white over-ear headphones, tired gentle eyes",
+  "car": "a sleek midnight-purple Japanese sports coupe, wide body, low stance, full-width red LED taillight bar, sharp LED headlights, glossy paint",
+  "timeline": [
+    {
+      "at": 0.0,
+      "shot": "S01",
+      "desc": "2am. She steps out of a back door into a neon alley, rain falling. Wide.",
+      "image": "wide shot, {character} stepping out of a steel back door into a narrow neon alley at 2am, rain, steam from vents, puddles reflecting pink and cyan signs",
+      "motion": "she walks slowly toward camera, rain falling, neon flickers, steam drifts",
+      "fallback": "rain_city"
+    },
+    {
+      "at": 9.0,
+      "shot": "S02",
+      "desc": "Close-up: she puts on her headphones. Neon in her tired eyes.",
+      "image": "close-up portrait of {character}, putting on headphones, neon reflections in her eyes, raindrops on her jacket, exhausted expression",
+      "motion": "she slowly lifts headphones over her ears and closes her eyes for a moment, subtle head movement",
+      "fallback": "rain_city"
+    },
+    {
+      "at": 18.0,
+      "fill": "rain_city"
+    },
+    {
+      "at": 30.0,
+      "shot": "S03",
+      "desc": "From behind: she walks through a holographic street, alone in the crowd.",
+      "image": "from behind, {character} walking alone through a crowded holographic shopping street, giant floating hologram signs, rain, crowd blurred",
+      "motion": "camera follows behind her as she walks, crowd moves past in slow motion, holograms shimmer",
+      "fallback": "neon_downtown"
+    },
+    {
+      "at": 40.0,
+      "shot": "S04",
+      "desc": "Her hand on the door handle of the coupe, rain beading on purple paint.",
+      "image": "macro close-up of a woman's hand opening the door handle of {car}, raindrops beading on the paint reflecting neon",
+      "motion": "hand pulls the door handle, door opens slightly, raindrops slide down the paint",
+      "fallback": "car"
+    },
+    {
+      "at": 47.0,
+      "shot": "S05",
+      "desc": "Inside the car: hands on the wheel, dashboard glow, the old photo tucked in the visor.",
+      "image": "interior of {car} at night, {character} in the driver seat with hands on the steering wheel, glowing dashboard, an old instant photo of two friends tucked in the sun visor, rain on the windshield",
+      "motion": "she glances up at the photo in the visor, takes a breath, rain streaks down the windshield",
+      "fallback": "rain_city"
+    },
+    {
+      "at": 56.0,
+      "shot": "S06",
+      "desc": "Close-up of the photo: two friends at Lake Kawaguchi, Fuji behind. Handwritten: 'sunrise, together'.",
+      "image": "close-up of an old faded instant photo tucked in a car sun visor, two young women laughing at a lake with Mount Fuji behind them, neon light from outside falling across it",
+      "motion": "very slow push in on the photo, neon light slides across it",
+      "fallback": "rain_city"
+    },
+    {
+      "at": 60.0,
+      "shot": "S07",
+      "desc": "BUILD. The coupe pulls out. Low rear tracking shot, taillight bar glowing.",
+      "image": "low rear tracking shot of {car} pulling out onto a wet neon street at night, red taillight bar glowing, spray from the tires",
+      "motion": "car accelerates away from camera, neon signs blur past, water sprays from tires",
+      "fallback": "car",
+      "drop": true
+    },
+    {
+      "at": 66.0,
+      "fill": "expressway"
+    },
+    {
+      "at": 84.0,
+      "shot": "S08",
+      "desc": "Drone: the coupe on an elevated expressway through holographic towers.",
+      "image": "aerial drone shot of {car} driving on an elevated highway at night between towering cyberpunk skyscrapers with giant holograms, light trails",
+      "motion": "drone follows the car from above and behind, city lights stream past",
+      "fallback": "expressway"
+    },
+    {
+      "at": 92.0,
+      "fill": "expressway"
+    },
+    {
+      "at": 117.0,
+      "shot": "S09",
+      "desc": "BREAKDOWN. She stops on a bridge, stands at the railing, city behind her.",
+      "image": "wide shot, {character} standing alone at the railing of a bridge at night, {car} parked behind her, glowing cyberpunk skyline across the bay, calm water reflecting lights",
+      "motion": "wind moves her hair and jacket, city lights twinkle, very slow camera drift",
+      "fallback": "neon_downtown"
+    },
+    {
+      "at": 127.0,
+      "shot": "S10",
+      "desc": "Close-up: she holds the photo. A tear. A memory.",
+      "image": "close-up of {character} holding an old instant photo, a single tear on her cheek, city lights bokeh behind her, blue night light",
+      "motion": "she looks down at the photo, then slowly up toward the horizon",
+      "fallback": "neon_downtown"
+    },
+    {
+      "at": 137.0,
+      "shot": "S11",
+      "desc": "Determination: she gets back in and grips the wheel.",
+      "image": "close-up of {character} gripping the steering wheel, determined eyes, neon reflections across her face, inside {car}",
+      "motion": "her grip tightens, she exhales and looks forward, engine glow",
+      "fallback": "car"
+    },
+    {
+      "at": 146.0,
+      "shot": "S12",
+      "desc": "DROP. The coupe launches. Tires spray, neon explodes past.",
+      "image": "dynamic side tracking shot of {car} launching down a neon street at night, motion blur, water spraying from tires, pink and cyan light streaks",
+      "motion": "car launches forward at high speed, intense motion blur, light streaks",
+      "fallback": "car",
+      "drop": true
+    },
+    {
+      "at": 149.0,
+      "fill": "neon_downtown"
+    },
+    {
+      "at": 165.0,
+      "shot": "S13",
+      "desc": "The coupe slices through a holographic Shibuya-style crossing under a giant hologram koi.",
+      "image": "{car} speeding through a giant scramble crossing at night surrounded by holographic billboards, a huge hologram koi fish swimming through the air above, crowds",
+      "motion": "car crosses the intersection at speed, hologram koi swims overhead, crowds blur",
+      "fallback": "neon_downtown"
+    },
+    {
+      "at": 172.0,
+      "fill": "neon_downtown"
+    },
+    {
+      "at": 186.0,
+      "shot": "S14",
+      "desc": "Inside: for the first time, she smiles. City light streams across her face.",
+      "image": "{character} driving at night with a small genuine smile, colorful city light streaming across her face through the window, headphones on",
+      "motion": "light streams across her face, she smiles softly, slight head nod to the music",
+      "fallback": "neon_downtown"
+    },
+    {
+      "at": 196.0,
+      "fill": "expressway"
+    },
+    {
+      "at": 207.0,
+      "shot": "S15",
+      "desc": "TUNNEL. The coupe heads into a glowing tunnel mouth.",
+      "image": "{car} driving toward the glowing entrance of an underground highway tunnel at night, orange tunnel lights, cyberpunk city above",
+      "motion": "car drives into the tunnel, lights begin streaking over the bodywork",
+      "fallback": "tunnel"
+    },
+    {
+      "at": 214.0,
+      "fill": "psy_tunnel",
+      "fx": "trip",
+      "drop": true
+    },
+    {
+      "at": 268.0,
+      "shot": "S16",
+      "desc": "Inner journey: her face in rainbow tunnel light, eyes closed, serene.",
+      "image": "close-up of {character} with eyes closed and a serene expression, face lit by shifting rainbow light from a tunnel, surreal dreamy atmosphere",
+      "motion": "rainbow light flows across her face, hair floats slightly as if weightless",
+      "fallback": "psy_tunnel",
+      "fx": "trip"
+    },
+    {
+      "at": 276.0,
+      "fill": "psy_tunnel",
+      "fx": "trip"
+    },
+    {
+      "at": 334.0,
+      "shot": "S17",
+      "desc": "EXIT. The coupe bursts out of the tunnel into golden dawn.",
+      "image": "{car} bursting out of a tunnel exit into golden sunrise light, huge lens flare, morning mist, mountains ahead",
+      "motion": "car exits the tunnel toward camera into blinding sunrise light, lens flare blooms",
+      "fallback": "dawn_bay",
+      "drop": true
+    },
+    {
+      "at": 341.0,
+      "fill": "dawn_bay"
+    },
+    {
+      "at": 362.0,
+      "shot": "S18",
+      "desc": "She stands at Lake Kawaguchi at sunrise, takes off her headphones, holds the photo up to the real Fuji.",
+      "image": "{character} standing at the shore of a calm lake at sunrise holding up an old instant photo that matches Mount Fuji behind it, golden light on her face, peaceful smile",
+      "motion": "she lowers her headphones, raises the photo to line up with the mountain, smiles as sunlight hits her face",
+      "fallback": "dawn_bay"
+    },
+    {
+      "at": 372.0,
+      "fill": "dawn_bay"
+    }
+  ],
+  "logo": {
+    "text": "TOKYO THAI",
+    "sub": "東京タイ"
+  }
+}
