@@ -285,8 +285,8 @@ def enhance(song, stems_dir, key, drops, end_from, out_dir, vocal_gain_db=2.5, g
                     midi = 69 + 12 * np.log2(f0 / 440)
                     tones = [36 + NOTE[key] + 7 + o for o in (0, 3, 7, 12, 15, 19)]          # chord tones near the voice
                     tgt = min(tones, key=lambda m: abs(m - midi))
-                    nat = pitch(g, tgt - midi); tuned = np.zeros_like(g); tuned[:len(nat)] = nat
-                    fifth = pitch(g, tgt - midi + 7); h5 = np.zeros_like(g); h5[:len(fifth)] = fifth
+                    fit = lambda x: np.vstack([x, np.zeros((max(0, len(g) - len(x)), 2))])[:len(g)]
+                    tuned = fit(pitch(g, tgt - midi)); h5 = fit(pitch(g, tgt - midi + 7))
                     a_ = 0.25 * vocode(g, key, octave=5)
                     c = highpass(0.8 * tuned + 0.35 * h5 + a_, 110); f_ = int(0.006 * SR)
                     c[:f_] *= np.linspace(0, 1, f_)[:, None]; c[-f_ * 4:] *= np.linspace(1, 0, f_ * 4)[:, None]
