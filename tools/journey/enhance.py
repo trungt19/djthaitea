@@ -286,6 +286,26 @@ def enhance(song, stems_dir, key, drops, end_from, out_dir, vocal_gain_db=2.5, g
             if name in takes:
                 mixed.insert(1 + 2 * k, ghost_word(takes[name], key))
         place(ghost_calls(mixed, exact[2], exact[3] - 20, per, every_bars=8), exact[2])
+        if vm:
+            extra = vm.get('extra', {})
+            raw = load(os.path.expanduser(extra['file'])) if extra.get('file') else None
+            cut = lambda ab: raw[int(ab[0] * SR):int(ab[1] * SR)].copy()
+            if raw is not None and extra.get('vowels'):
+                vowels = [highpass(cut(ab), 70) for ab in extra['vowels']]
+                for a0, a1 in extra.get('choir_at', []):
+                    cp = choir_pad(vowels, key, a1 - a0, seed=int(a0))
+                    add(out, cp * 10 ** ((ref - 13 - db(cp[int(2.5 * SR):-int(3.5 * SR)])) / 20), a0)
+                    log.append(f'your choir under {int(a0 // 60)}:{a0 % 60:04.1f}-{int(a1 // 60)}:{a1 % 60:04.1f}')
+            if raw is not None and extra.get('whisper'):
+                wv = cut(extra['whisper']); wv = highpass(wv, 150) / (np.abs(wv).max() + 1e-9)
+                wverb = conv(wv, reverb_ir(3.0, rt60=2.8, bright=9000, seed=41))
+                wsig = 0.5 * wverb; wsig[:len(wv)] += wv
+                add(out, wsig * 10 ** ((ref - 8 - db(wv)) / 20), extra['whisper_at'])
+                log.append(f'your whisper at {int(extra["whisper_at"] // 60)}:{extra["whisper_at"] % 60:04.1f}')
+            if raw is not None and extra.get('line'):
+                mv = memory_voice(highpass(cut(extra['line']), 90))
+                add(out, mv * 10 ** ((ref - 7 - db(mv[:int(2 * SR)])) / 20), extra['line_at'])
+                log.append(f'"Sunrise... together" at {int(extra["line_at"] // 60)}:{extra["line_at"] % 60:04.1f}')
         if vm and vm.get('tag') in takes:
             tag = voice_tag(takes[vm['tag']], key)
             add(out, tag * 10 ** ((ref - 6 - db(tag[:int(0.9 * SR)])) / 20), 3.0)
@@ -469,6 +489,67 @@ def voice_tag(w, key):
     echo = pingpong(core, 0.33, repeats=5, feedback=0.5) * 0.5
     verb = conv(core, reverb_ir(3.2, rt60=3.0, bright=8000, seed=11)) * 0.35
     out = np.zeros((max(len(echo), len(verb)), 2)); out[:len(echo)] += echo; out[:len(core)] += core; out[:len(verb)] += verb
+    return out / (np.abs(out).max() + 1e-9)
+
+
+
+def f0_of(x):
+    """Median pitch (Hz) of a voiced mono segment, by frame autocorrelation."""
+    h = int(0.05 * SR); lo, hi = int(SR / 400), int(SR / 60); fs = []
+    for i in range(0, len(x) - h, h):
+        m = x[i:i + h] - x[i:i + h].mean()
+        if np.sqrt(np.mean(m ** 2)) < 1e-3:
+            continue
+        ac = np.correlate(m, m, 'full')[h - 1:]
+        k = lo + np.argmax(ac[lo:hi])
+        if ac[k] > 0.3 * ac[0]:
+            fs.append(SR / k)
+    return float(np.median(fs)) if fs else 0.0
+
+
+def stretch(x, length, seed=0, grain=0.5):
+    """Granular stretch of a sustained vowel into a smooth pad of any length."""
+    rng = np.random.default_rng(seed); g = int(grain * SR); hop = g // 4
+    n = int(length * SR); out = np.zeros((n + g, 2)); w = np.hanning(g)[:, None]
+    src = x[int(0.25 * SR):len(x) - int(0.25 * SR)] if len(x) > g + int(0.5 * SR) else x
+    for i in range(0, n, hop):
+        j = int(rng.integers(0, max(1, len(src) - g)))
+        out[i:i + g] += src[j:j + g] * w if len(src) >= g else 0
+    out = out[:n]
+    return out / (np.abs(out).max() + 1e-9)
+
+
+def choir_pad(vowels, key, length, seed=0):
+    """The artist's sustained vowels tuned onto the minor triad (low voices, small shifts) plus a
+    vocoded high layer for the angelic shimmer; slow swell in and out."""
+    r = NOTE[key]; targets = [36 + r + 7, 36 + r + 10, 48 + r + 2, 48 + r + 7]     # G2 Bb2 D3 G3 for key G
+    voices = np.zeros((int(length * SR), 2))
+    for i, v in enumerate(vowels):
+        f = f0_of(v.mean(1))
+        if not f:
+            continue
+        midi = 69 + 12 * np.log2(f / 440)
+        for tgt in targets:
+            shift = tgt - midi
+            if abs(shift) <= 7:
+                pv = pitch(v, shift)
+                voices += stretch(pv, length, seed=seed + i * 7 + int(tgt)) * 0.5
+    hi = vocode(stretch(vowels[0], length, seed=seed + 99), key, octave=5)
+    pad_ = 0.7 * voices / (np.abs(voices).max() + 1e-9) + 0.45 * hi
+    pad_ = highpass(lowpass(pad_, 7000), 120)
+    t = np.arange(len(pad_)) / SR
+    env = np.minimum(1, t / 2.5) * np.minimum(1, (length - t) / 3.5)
+    pad_ = pad_ * env[:, None]
+    pad_ = pad_ + 0.6 * conv(pad_, reverb_ir(3.5, rt60=3.6, bright=7000, seed=21))[:len(pad_)]
+    return pad_ / (np.abs(pad_).max() + 1e-9)
+
+
+def memory_voice(w):
+    """A spoken line made to sound like a memory: band-limited, slight slow-down, long reverb."""
+    m = pitch(w, -0.6)
+    m = highpass(lowpass(m, 5200), 250)
+    verb = conv(m, reverb_ir(4.0, rt60=3.8, bright=6000, seed=31)) * 0.55
+    out = np.zeros((len(verb), 2)); out[:len(m)] += m; out += verb
     return out / (np.abs(out).max() + 1e-9)
 
 
