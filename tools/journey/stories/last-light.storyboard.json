@@ -98,9 +98,11 @@
       "at": 127.0,
       "shot": "S10",
       "desc": "Close-up: she holds the photo. A tear. A memory.",
-      "image": "close-up of {character} holding an old instant photo, a single tear on her cheek, city lights bokeh behind her, blue night light",
+      "image": "close-up of {character} holding an old faded instant photo in her hands, looking down at it, a single tear on her cheek, city lights bokeh behind her",
       "motion": "she looks down at the photo, then slowly up toward the horizon",
-      "fallback": "neon_downtown"
+      "fallback": "neon_downtown",
+      "ref_weight": 0.45,
+      "style": "blue night light, city bokeh, cinematic, shallow depth of field, anamorphic lens flares, 35mm film grain, highly detailed"
     },
     {
       "at": 137.0,
@@ -139,9 +141,11 @@
       "at": 186.0,
       "shot": "S14",
       "desc": "Inside: for the first time, she smiles. City light streams across her face.",
-      "image": "{character} driving at night with a small genuine smile, colorful city light streaming across her face through the window, headphones on",
+      "image": "{character} driving a car at night, smiling softly for the first time, colorful light streaming across her face through the side window, hands on the steering wheel",
       "motion": "light streams across her face, she smiles softly, slight head nod to the music",
-      "fallback": "neon_downtown"
+      "fallback": "neon_downtown",
+      "ref_weight": 0.45,
+      "style": "warm colorful city lights through a car window, cinematic, shallow depth of field, anamorphic lens flares, 35mm film grain, highly detailed"
     },
     {
       "at": 196.0,
@@ -165,10 +169,12 @@
       "at": 268.0,
       "shot": "S16",
       "desc": "Inner journey: her face in rainbow tunnel light, eyes closed, serene.",
-      "image": "close-up of {character} with eyes closed and a serene expression, face lit by shifting rainbow light from a tunnel, surreal dreamy atmosphere",
+      "image": "close-up of {character} with eyes closed and a serene peaceful expression, her face bathed in flowing rainbow prismatic light, hair floating as if weightless, inside a glowing tunnel of light",
       "motion": "rainbow light flows across her face, hair floats slightly as if weightless",
       "fallback": "psy_tunnel",
-      "fx": "trip"
+      "fx": "trip",
+      "ref_weight": 0.4,
+      "style": "surreal dreamy psychedelic rainbow light, prismatic, glowing, cinematic, shallow depth of field, anamorphic lens flares, 35mm film grain, highly detailed"
     },
     {
       "at": 276.0,
@@ -182,7 +188,8 @@
       "image": "{car} bursting out of a tunnel exit into golden sunrise light, huge lens flare, morning mist, mountains ahead",
       "motion": "car exits the tunnel toward camera into blinding sunrise light, lens flare blooms",
       "fallback": "dawn_bay",
-      "drop": true
+      "drop": true,
+      "style": "golden sunrise light, lens flare, morning mist, cinematic, shallow depth of field, anamorphic lens flares, 35mm film grain, highly detailed"
     },
     {
       "at": 341.0,
@@ -192,9 +199,11 @@
       "at": 362.0,
       "shot": "S18",
       "desc": "She stands at Lake Kawaguchi at sunrise, takes off her headphones, holds the photo up to the real Fuji.",
-      "image": "{character} standing at the shore of a calm lake at sunrise holding up an old instant photo that matches Mount Fuji behind it, golden light on her face, peaceful smile",
+      "image": "{character} standing at the shore of a calm lake at sunrise, holding up an old instant photo toward Mount Fuji, golden sunlight on her face, gentle smile, morning mist on the water",
       "motion": "she lowers her headphones, raises the photo to line up with the mountain, smiles as sunlight hits her face",
-      "fallback": "dawn_bay"
+      "fallback": "dawn_bay",
+      "ref_weight": 0.4,
+      "style": "golden sunrise, warm morning light, soft mist, peaceful, hopeful, cinematic, shallow depth of field, anamorphic lens flares, 35mm film grain, highly detailed"
     },
     {
       "at": 372.0,

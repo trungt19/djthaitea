@@ -141,7 +141,7 @@ def generate(board, only=None, variants=2, stills_only=False, length=121, w=1280
         out = os.path.join(shots_dir, sid + '.mp4')
         if os.path.exists(out) and not only:
             print(f'{sid}: done already'); continue
-        img_prompt = fill(e['image'], board) + ', ' + board.get('style', '')
+        img_prompt = fill(e['image'], board) + ', ' + e.get('style', board.get('style', ''))
         # stills: keep any you already picked (named <id>.png), otherwise make variants and use the first
         pick = os.path.join(stills_dir, sid + '.png')
         if not os.path.exists(pick):
@@ -149,14 +149,14 @@ def generate(board, only=None, variants=2, stills_only=False, length=121, w=1280
             for v, sd in enumerate(seeds, 1):
                 t = time.time()
                 use_ref = ref if '{character}' in e['image'] and os.path.basename(ref or '') != sid + '.png' else None
-                f = sdxl_still(img_prompt, neg, sd, f'journey/{sid}_v{v}', ref=use_ref)
+                f = sdxl_still(img_prompt, neg, sd, f'journey/{sid}_v{v}', ref=use_ref, ref_weight=e.get('ref_weight', 0.7))
                 dst = os.path.join(stills_dir, f'{sid}_v{v}.png'); shutil.move(f, dst)
                 print(f'{sid}: still v{v} ({time.time() - t:.0f}s) -> {dst}', flush=True)
             shutil.copy(os.path.join(stills_dir, f'{sid}_v1.png'), pick)
         if stills_only:
             continue
         t = time.time()
-        motion = fill(e.get('motion', ''), board) + ', ' + fill(e['image'], board) + ', ' + board.get('style', '')
+        motion = fill(e.get('motion', ''), board) + ', ' + fill(e['image'], board) + ', ' + e.get('style', board.get('style', ''))
         frames = wan_i2v(pick, motion, neg, random.randint(1, 2**31), f'journey/{sid}_vid', w=w, h=h, length=length)
         frames_to_mp4(frames, out)
         print(f'{sid}: video ({time.time() - t:.0f}s) -> {out}', flush=True)
