@@ -270,7 +270,7 @@ def enhance(song, stems_dir, key, drops, end_from, out_dir, vocal_gain_db=2.5, g
             add(out, sig / (np.abs(sig).max() + 1e-9) * lvl * 2.2, at)
         vm, takes = load_voice(voice) if voice else (None, {})
         for di, d in enumerate(exact):
-            if di == 0:
+            if di == 0 and len(exact) > 1:
                 continue
             per = beat_period(drums_m, d - 16, d)
             word = (vm or {}).get('drops', {}).get(str(di + 1))
@@ -303,12 +303,16 @@ def enhance(song, stems_dir, key, drops, end_from, out_dir, vocal_gain_db=2.5, g
                 log.append(f'your voice: "{word}" stutters into {int(d // 60)}:{d % 60:04.1f}')
             place(pat, at)
             log.append(f'ghost-voice stutter run into {int(d // 60)}:{d % 60:04.1f}')
-        per = beat_period(drums_m, exact[2], exact[2] + 20)
+        stops = list(exact[1:]) + [end_from or (n / SR)]
+        spans = [(a_, b_) for a_, b_ in zip(exact, stops) if b_ - a_ > 40]
         mixed = list(chops)
         for k, name in enumerate((vm or {}).get('calls', [])):
             if name in takes:
                 mixed.insert(1 + 2 * k, ghost_word(takes[name], key))
-        place(ghost_calls(mixed, exact[2], exact[3] - 20, per, every_bars=8), exact[2])
+        if spans:
+            c0, c1 = max(spans, key=lambda s_: s_[1] - s_[0])
+            per = beat_period(drums_m, c0, c0 + 20)
+            place(ghost_calls(mixed, c0, c1 - 20, per, every_bars=8), c0)
         if vm:
             extra = vm.get('extra', {})
             raw = load(os.path.expanduser(extra['file'])) if extra.get('file') else None

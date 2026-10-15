@@ -171,14 +171,11 @@ def main():
         jp = {'rain_city': ('雨の東京', 'Rain over Tokyo'), 'expressway': ('首都高', 'Shuto Expressway'),
               'bridge_stars': ('隅田川', 'Sumida River'), 'neon_downtown': ('渋谷', 'Shibuya'),
               'tunnel': ('トンネル', 'The Tunnel'), 'psy_tunnel': ('トンネル', 'The Tunnel'), 'dawn_bay': ('富士山', 'Mount Fuji')}
-        chapters, seen = [], set()
+        chapters = []
         for s in st['sections']:
-            if s['scene'] in seen and s['scene'] != 'dawn_bay':
-                continue
-            seen.add(s['scene'])
-            if s['scene'] == 'dawn_bay' and any(c['en'] == 'Mount Fuji' for c in chapters):
-                continue
             j, e = jp[s['scene']]
+            if any(c['en'] == e for c in chapters):          # one chapter per place
+                continue
             chapters.append(dict(at=max(13.0, s['start'] + 1.5), time='', jp=j, en=e))
         st['chapters'] = chapters
         json.dump(st, open(story_f, 'w'), indent=2, ensure_ascii=False)
@@ -238,12 +235,29 @@ def main():
              os.path.join(rel, f'{a.artist} - {title} (Short {i}).mp4')])
 
     step('8. Thumbnail + description')
-    peak = P['drops'][min(1, len(P['drops']) - 1)] + 6
     frame = os.path.join(wd, 'thumb_src.png')
-    run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{peak:.2f}', '-i', wide, '-frames:v', '1', frame])
+    best_frame(wide, P, frame)
     make_thumbnail(frame, os.path.join(rel, 'thumbnail.jpg'), title, a.artist)
     write_description(os.path.join(rel, 'YouTube_description.txt'), title, a.subtitle, a.artist, story, wd)
     print('\nRelease package ready:', rel)
+
+
+def best_frame(video, P, dst):
+    """The most vivid frame (saturation x brightness) from a dozen samples around the drops."""
+    import numpy as np
+    from PIL import Image
+    times = [d + o for d in P['drops'] for o in (2, 5, 8, 11)] or [P['duration'] * f for f in (0.4, 0.5, 0.6)]
+    best, best_t = -1, times[0]
+    for t in times[:16]:
+        raw = subprocess.run(['ffmpeg', '-v', 'error', '-ss', f'{t:.2f}', '-i', video, '-frames:v', '1', '-vf', 'scale=160:90',
+                              '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], capture_output=True).stdout
+        if len(raw) != 160 * 90 * 3:
+            continue
+        a = np.frombuffer(raw, np.uint8).reshape(90, 160, 3).astype(float) / 255
+        sat = (a.max(2) - a.min(2)).mean(); val = a.max(2).mean()
+        if sat * val > best:
+            best, best_t = sat * val, t
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{best_t:.2f}', '-i', video, '-frames:v', '1', dst], check=True)
 
 
 def make_thumbnail(src, dst, title, artist):
